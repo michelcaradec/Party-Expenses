@@ -84,7 +84,7 @@ CREATE
 
 _Note: the expense could have been stored as a property of the person. The relationship was preferred as the expense represents an action (described with a verb) rather than a characteristic of the person._
 
-image:https://github.com/michelcaradec/Party-Expenses/blob/master/assets/01-expenses.png?raw=true
+image::https://github.com/michelcaradec/Party-Expenses/blob/master/assets/01-expenses.png?raw=true[width=600]
 
 [source,cypher]
 ----
@@ -109,7 +109,7 @@ AND r.amount <> 0
 CREATE (t)-[:OWES_TO {amount: round(r.amount / GuestsCount * 100) / 100}]->(s);
 ----
 
-image:https://github.com/michelcaradec/Party-Expenses/blob/master/assets/02-debts.png?raw=true
+image::https://github.com/michelcaradec/Party-Expenses/blob/master/assets/02-debts.png?raw=true[width=600]
 
 == Simplifying Mutual Debts
 
@@ -136,7 +136,7 @@ The output reports:
 Set 6 properties, deleted 12 relationships, created 6 relationships.
 ----
 
-image:https://github.com/michelcaradec/Party-Expenses/blob/master/assets/03-one_transaction.png?raw=true
+image::https://github.com/michelcaradec/Party-Expenses/blob/master/assets/03-one_transaction.png?raw=true[width=600]
 
 [source,cypher]
 ----
