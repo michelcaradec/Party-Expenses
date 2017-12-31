@@ -1,0 +1,167 @@
+= Party Expenses
+:neo4j-version: 3.3.0
+:author: Michel CARADEC
+:style: red:Person(name)
+
+== Introduction
+
+The idea of this Saturday afternoon "couch-workshop" came from a common case where a group of persons individually bring food supplies for a party.
+
+Then come the point where everybody must pay to everybody else for what he·she owes (A owes €€€ to B, B owes €€€ to C, etc.).
+
+The more persons, the more challenging it is, leading sometimes to some confusing situations. I used to solve this equation using a spreadsheet, and then came Graph Databases, and https://neo4j.com[Neo4j^].
+
+== Setup
+
+//setup
+[source,cypher]
+----
+// 1. Initializing the Database
+CREATE
+(gaelle:Person {name: "Gaëlle"}),
+(gregory:Person {name: "Gregory"}),
+(mathilde:Person {name: "Mathilde"}),
+(michel:Person {name: "Michel"}),
+(yann:Person {name: "Yann"}),
+(gaelle)-[:SPENT {amount: 100}]->(gaelle),
+(gregory)-[:SPENT {amount: 35}]->(gregory),
+(mathilde)-[:SPENT {amount: 67}]->(mathilde),
+(michel)-[:SPENT {amount: 0}]->(michel),
+(yann)-[:SPENT {amount: 85}]->(yann);
+
+// 2. Adding the Debt Relationship
+MATCH (p:Person)
+WITH toFloat(count(p)) AS GuestsCount
+MATCH (s:Person)
+MATCH (t:Person)
+MATCH (s)-[r:SPENT]-(s)
+WHERE s <> t
+AND r.amount <> 0
+CREATE (t)-[:OWES_TO {amount: round(r.amount / GuestsCount * 100) / 100}]->(s);
+
+// 3. Simplifying Mutual Debts
+MATCH (s)-[r1:OWES_TO]->(t)
+MATCH (t)-[r2:OWES_TO]->(s)
+WHERE r1.amount - r2.amount > 0
+// Create a new merged transaction...
+CREATE (s)-[:OWES_TO {amount: round((r1.amount - r2.amount) * 100) / 100}]->(t)
+// ...Then delete the previous ones
+DELETE r1
+DELETE r2;
+----
+
+== The Problem
+
+Let's pretend we have a total of **five** persons coming to our party. Their expenses are:
+
+[source,cypher]
+----
+MATCH (n)-[r:SPENT]-(n)
+RETURN n.name as Person, r.amount AS Expense
+ORDER BY Person;
+----
+
+//table
+
+== Initializing the Database
+
+The following Cypher query will create the persons (nodes) and theirs expenses (using a self relationship):
+
+[source]
+----
+CREATE
+(gaelle:Person {name: "Gaëlle"}),
+(gregory:Person {name: "Gregory"}),
+(mathilde:Person {name: "Mathilde"}),
+(michel:Person {name: "Michel"}),
+(yann:Person {name: "Yann"}),
+(gaelle)-[:SPENT {amount: 100}]->(gaelle),
+(gregory)-[:SPENT {amount: 35}]->(gregory),
+(mathilde)-[:SPENT {amount: 67}]->(mathilde),
+(michel)-[:SPENT {amount: 0}]->(michel),
+(yann)-[:SPENT {amount: 85}]->(yann);
+----
+
+_Note: the expense could have been stored as a property of the person. The relationship was preferred as the expense represents an action (described with a verb) rather than a characteristic of the person._
+
+[source,cypher]
+----
+MATCH (n)-[r:SPENT]-(m) RETURN *;
+----
+
+//graph_result
+
+== Adding the Debt Relationship
+
+The following Cypher query will add a relationship between two persons to indicate how much the first person owes to the second one.
+
+[source]
+----
+MATCH (p:Person)
+WITH toFloat(count(p)) AS GuestsCount
+MATCH (s:Person)
+MATCH (t:Person)
+MATCH (s)-[r:SPENT]-(s)
+WHERE s <> t
+AND r.amount <> 0
+CREATE (t)-[:OWES_TO {amount: round(r.amount / GuestsCount * 100) / 100}]->(s);
+----
+
+== Simplifying Mutual Debts
+
+As in real life, if two persons owe some money to each other, we merge the two transactions into a single one.
+
+This is done with the following Cypher query:
+
+[source]
+----
+MATCH (s)-[r1:OWES_TO]->(t)
+MATCH (t)-[r2:OWES_TO]->(s)
+WHERE r1.amount - r2.amount > 0
+// Create a new merged transaction...
+CREATE (s)-[:OWES_TO {amount: round((r1.amount - r2.amount) * 100) / 100}]->(t)
+// ...Then delete the previous ones
+DELETE r1
+DELETE r2;
+----
+
+The output reports:
+
+[source,text]
+----
+Set 6 properties, deleted 12 relationships, created 6 relationships.
+----
+
+[source,cypher]
+----
+MATCH (n)-[r]-(m) RETURN *;
+----
+
+//graph_result
+
+== Getting the Bill
+
+Our last Cypher query summarizes each person debt:
+
+[source,cypher]
+----
+MATCH ()-[r:OWES_TO]->()
+WITH
+    startNode(r).name AS Debitor,
+    endNode(r).name AS Creditor,
+    r.amount AS Amount
+RETURN Debitor, Amount, Creditor
+ORDER BY Debitor, Amount;
+----
+
+//table
+
+== Conclusions
+
+Only the first query needs to be modified to fit your own case.
+
+Enjoy your party! :-)
+
+---
+
+Created by {author} - https://fr.linkedin.com/in/michel-caradec-36997650/[LinkedIn^]
