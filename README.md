@@ -1,4 +1,4 @@
-#  Expenses - Neo4j
+#  Party Expenses - Neo4j
 
 ## Abstract
 
